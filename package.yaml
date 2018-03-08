@@ -21,6 +21,8 @@ description:         Please see the README on Github at <https://github.com/vadi
 
 dependencies:
 - base >= 4.7 && < 5
+- megaparsec
+- text
 
 library:
   source-dirs: src
@@ -46,3 +48,4 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - type-theory-homework
+    - hspec
