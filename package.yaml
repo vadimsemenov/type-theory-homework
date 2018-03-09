@@ -28,13 +28,18 @@ library:
   source-dirs: src
 
 executables:
-  type-theory-homework-exe:
-    main:                Main.hs
-    source-dirs:         app
+  tt-task1:
+    main:                Task1.hs
+    source-dirs:         task1
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    dependencies:
+    - type-theory-homework
+  tt-task2:
+    main:                Task2.hs
+    source-dirs:         task2
     dependencies:
     - type-theory-homework
 

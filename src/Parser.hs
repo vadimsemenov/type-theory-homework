@@ -3,6 +3,7 @@
 module Parser where
 
 import           Control.Monad              (void)
+import Data.Void
 import qualified Data.Text                  as T
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
@@ -11,18 +12,12 @@ import qualified Text.Megaparsec.Char.Lexer as L
 import           LambdaCalculus
 
 
-type Parser = Parsec () T.Text
+type Parser = Parsec Void T.Text
 
-{-
-<Expression>  ::= [<Application>] '\' <Variable> '.' <Expression>
-                | <Application>
-<Application> ::= <Application> <Atom> | <Atom>
-<Atom>        ::= '(' <Expression> ')' | <Variable>
-<Variable>    ::= ('a'...'z') {'a'...'z'|'0'...'9'|'''}*
--}
 
-parseLambda :: T.Text -> Either (ParseError Char ()) Lambda
-parseLambda = parse (expression >>= \res -> eof >> return res) ""
+parseLambda :: T.Text -> Either (ParseError Char Void) Lambda
+parseLambda = parse (expression <* eof) ""
+
 
 expression :: Parser Lambda
 expression = lexeme expression'
