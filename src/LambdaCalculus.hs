@@ -23,11 +23,19 @@ data LambdaG a = Application (LambdaG a) (LambdaG a)
 
 type Lambda = LambdaG Literal
 
+data LambdaWithSubstitution = LambdaWithSubstitution
+             { into :: Lambda
+             , var  :: Literal
+             , what :: Lambda
+             }
+
 deriving instance Eq Lambda
 
 instance Show Lambda where
     show = showWithParenthesis
 
+instance Show LambdaWithSubstitution where
+  show ls = showShort (into ls) ++ "[" ++ T.unpack (var ls) ++ " := " ++ showShort (what ls) ++ "]"
 
 showWithParenthesis :: Lambda -> String
 -- showWithParenthesis (Application lhs rhs@(Application _ _)) = "(" ++ showWithParenthesis lhs ++  " (" ++ showWithParenthesis rhs ++ "))"
@@ -55,3 +63,13 @@ freeVariables (Application lhs rhs) = freeVariables lhs `merge` freeVariables rh
         | l < r     = l : merge ls (r : rs)
         | l > r     = r : merge (l : ls) rs
         | otherwise = l : merge ls rs
+
+substitute :: LambdaWithSubstitution -> Either Literal Lambda
+substitute (LambdaWithSubstitution into instead what) = substitute' into (freeVariables what)
+  where
+    substitute' was@(Variable x) fv = if x == instead then Right what else Right was
+    substitute' (Application lhs rhs) fv = Application <$> substitute' lhs fv <*> substitute' rhs fv
+    substitute' was@(Abstraction x xs) fv
+        | x == instead = Right was
+        | x `elem` fv  = Left x
+        | otherwise    = Abstraction x <$> substitute' xs fv

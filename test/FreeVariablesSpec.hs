@@ -4,6 +4,7 @@ module FreeVariablesSpec
        ( spec
        ) where
 
+import           SpecUtil
 import           Test.Hspec
 
 import           LambdaCalculus
@@ -33,6 +34,3 @@ spec = do
             freeVariables (parse fst) `shouldBe` fstExpected
         it (T.unpack snd) $
             freeVariables (parse snd) `shouldBe` sndExpected
-
-parse :: T.Text -> Lambda
-parse = fromRight (Variable "fail") . parseLambda

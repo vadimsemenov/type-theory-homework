@@ -42,6 +42,11 @@ executables:
     source-dirs:         task2
     dependencies:
     - type-theory-homework
+  tt-task3:
+    main:                Task3.hs
+    source-dirs:         task3
+    dependencies:
+    - type-theory-homework
 
 tests:
   type-theory-homework-test:
