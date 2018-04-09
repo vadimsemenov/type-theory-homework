@@ -15,4 +15,4 @@ import           System.IO
 main :: IO ()
 main = io $ \input output -> parseLambda <$> T.hGetContents input >>= \case
     Left err -> hPutStr output $ parseErrorPretty err
-    Right la -> hPutStr output $ show la
+    Right la -> hPutStr output $ showWithParenthesis la

@@ -1,11 +1,25 @@
+{-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE StandaloneDeriving   #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
-module LambdaCalculus where
+module LambdaCalculus
+       ( LambdaG (..)
+       , Lambda
+       , Literal
+       , LambdaWithSubstitution (..)
+       , showWithParenthesis
+       , showShort
+       , freeVariables
+       , substitute
+       ) where
 
-import qualified Data.Text as T
-
+import           Control.Monad.State.Lazy
+import           Data.Either              (fromRight)
+import           Data.Set                 (Set)
+import qualified Data.Set                 as Set
+import qualified Data.Text                as T
+import           Debug.Trace
 
 {-
 <Expression>  ::= [<Application>] '\' <Variable> '.' <Expression>
@@ -32,7 +46,7 @@ data LambdaWithSubstitution = LambdaWithSubstitution
 deriving instance Eq Lambda
 
 instance Show Lambda where
-    show = showWithParenthesis
+    show = showShort
 
 instance Show LambdaWithSubstitution where
   show ls = showShort (into ls) ++ "[" ++ T.unpack (var ls) ++ " := " ++ showShort (what ls) ++ "]"
@@ -51,18 +65,10 @@ showShort (Abstraction x xs) = "(\\" ++ T.unpack x ++ "." ++ showShort xs ++ ")"
 showShort (Variable v) = T.unpack v
 
 
-freeVariables :: Lambda -> [Literal]
-freeVariables (Variable v) = [v]
-freeVariables (Abstraction x xs) = filter (/= x) $ freeVariables xs
-freeVariables (Application lhs rhs) = freeVariables lhs `merge` freeVariables rhs
-  where
-    merge :: [Literal] -> [Literal] -> [Literal]
-    merge [] fv = fv
-    merge fv [] = fv
-    merge (l : ls) (r : rs)
-        | l < r     = l : merge ls (r : rs)
-        | l > r     = r : merge (l : ls) rs
-        | otherwise = l : merge ls rs
+freeVariables :: Lambda -> Set Literal
+freeVariables (Variable v)          = Set.singleton v
+freeVariables (Abstraction x xs)    = Set.delete x $ freeVariables xs
+freeVariables (Application lhs rhs) = freeVariables lhs `Set.union` freeVariables rhs
 
 substitute :: LambdaWithSubstitution -> Either Literal Lambda
 substitute (LambdaWithSubstitution into instead what) = substitute' into (freeVariables what)
@@ -70,6 +76,6 @@ substitute (LambdaWithSubstitution into instead what) = substitute' into (freeVa
     substitute' was@(Variable x) fv = if x == instead then Right what else Right was
     substitute' (Application lhs rhs) fv = Application <$> substitute' lhs fv <*> substitute' rhs fv
     substitute' was@(Abstraction x xs) fv
-        | x == instead = Right was
-        | x `elem` fv  = Left x
-        | otherwise    = Abstraction x <$> substitute' xs fv
+        | x == instead || instead `notElem` freeVariables xs = Right was
+        | x `elem` fv = Left x
+        | otherwise = Abstraction x <$> substitute' xs fv

@@ -32,7 +32,7 @@ spec = do
                 (Variable "h"))
                 ))
         it "shown" $
-            show (fromRight (Variable "impossible") (parseLambda input)) `shouldBe` expected
+            showWithParenthesis (fromRight (Variable "impossible") (parseLambda input)) `shouldBe` expected
     describe "whitespaces" $ do
         context "id" $ do
             let expected = Right $ Abstraction "x" (Variable "x")

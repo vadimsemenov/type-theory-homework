@@ -23,6 +23,8 @@ dependencies:
 - base >= 4.7 && < 5
 - megaparsec
 - text
+- containers
+- mtl
 
 library:
   source-dirs: src
@@ -45,6 +47,11 @@ executables:
   tt-task3:
     main:                Task3.hs
     source-dirs:         task3
+    dependencies:
+    - type-theory-homework
+  tt-task4:
+    main:                Task4.hs
+    source-dirs:         task4
     dependencies:
     - type-theory-homework
 
