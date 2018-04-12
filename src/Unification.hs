@@ -1,16 +1,16 @@
 module Unification
        ( Equation (..)
        , Term (..)
-       , Literal
        , FunctionLiteral
        , VariableLiteral
+       , EquationSystem
        , unify
        ) where
 
 
-import qualified Data.Text as T
-import Control.Monad (join)
-import Debug.Trace (traceShowId)
+import           Control.Monad (join)
+import qualified Data.Text     as T
+import           Debug.Trace   (traceShowId)
 
 
 data Equation = Term :=: Term
@@ -41,19 +41,19 @@ unify system = unificationStep system >>= \system' ->
     if system == system' then Just system else unify system'
 
 unificationStep :: EquationSystem -> Maybe EquationSystem
-unificationStep system = checkValid system >>=
-                         swapAll . traceShowId >>=
-                         filterLeftAll . traceShowId >>=
-                         unrollAll . traceShowId >>=
-                         substituteAll . traceShowId >>=
-                         filterEqualsAll . traceShowId
+unificationStep system = swapAll system >>=
+                         checkValid >>=
+                         filterLeftAll >>=
+                         unrollAll >>=
+                         substituteAll >>=
+                         filterEqualsAll
 
 -- Check absence of "x = t" where t contains x
 checkValid :: EquationSystem -> Maybe EquationSystem
-checkValid system = traverse checkValid' system
+checkValid = traverse checkValid'
   where
-    checkValid' eq@((Variable var) :=: f@(Function _ _)) = if member var f then Nothing else Just eq
-    checkValid' eq@(f@(Function _ _) :=: (Variable var)) = if member var f then Nothing else Just eq
+    checkValid' eq@(Variable var :=: f@(Function _ _)) = if member var f then Nothing else Just eq
+    checkValid' eq@(f@(Function _ _) :=: Variable var) = if member var f then Nothing else Just eq
     checkValid' eq                                       = Just eq
 
     member var (Variable var')   = var == var'
@@ -64,11 +64,11 @@ filterLeftAll :: EquationSystem -> Maybe EquationSystem
 filterLeftAll system = Just $ go system
   where
     go :: EquationSystem -> EquationSystem
-    go [] = []
-    go (h : t) = h : (go (filterLeft h t))
+    go []      = []
+    go (h : t) = h : go (filterLeft h t)
 
 filterLeft :: Equation -> EquationSystem -> EquationSystem
-filterLeft ((Variable var) :=: t) system = map replaceLeft system
+filterLeft (Variable var :=: t) system = map replaceLeft system
   where
     replaceLeft :: Equation -> Equation
     replaceLeft (v@(Variable var') :=: s) = (if var' == var then t else v) :=: s
@@ -88,20 +88,20 @@ unrollAll :: EquationSystem -> Maybe EquationSystem
 unrollAll system = join <$> traverse unrollFunction system
 
 unrollFunction :: Equation -> Maybe EquationSystem
-unrollFunction ((Function f fArgs) :=: (Function g gArgs)) =
+unrollFunction (Function f fArgs :=: Function g gArgs) =
     if f == g && length fArgs == length gArgs
-    then Just $ map (uncurry (:=:)) $ zip fArgs gArgs
+    then Just $ zipWith (:=:) fArgs gArgs
     else Nothing
 unrollFunction eq = Just [eq]
 
 -- d)
 substituteAll :: EquationSystem -> Maybe EquationSystem
-substituteAll system = substitute' [] system
+substituteAll = substitute' []
     where
       substitute' pred [] = Just $ reverse pred
-      substitute' pred (eq@((Variable var) :=: t) : rest) = if lhs == pred && rhs == rest
+      substitute' pred (eq@(Variable var :=: t) : rest) = if lhs == pred && rhs == rest
                                                             then substitute' (eq : pred) rest
-                                                            else Just $ (reverse lhs) ++ (eq : rhs)
+                                                            else Just $ reverse lhs ++ (eq : rhs)
         where
           substitution = (var, t)
           (lhs, rhs) = (substituteEverywhere substitution pred, substituteEverywhere substitution rest)
@@ -110,7 +110,7 @@ substituteEverywhere :: (VariableLiteral, Term) -> EquationSystem -> EquationSys
 substituteEverywhere substitution = map (substituteEquation substitution)
 
 substituteEquation :: (VariableLiteral, Term) -> Equation -> Equation
-substituteEquation substitution (lhs :=: rhs) = (substitute substitution lhs :=: substitute substitution rhs)
+substituteEquation substitution (lhs :=: rhs) = substitute substitution lhs :=: substitute substitution rhs
 
 substitute :: (VariableLiteral, Term) -> Term -> Term
 substitute (instead, what) = substitute'

@@ -5,7 +5,7 @@ module UnificationParser
        , parseEquation
        ) where
 
-import Unification
+import           Unification
 
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
