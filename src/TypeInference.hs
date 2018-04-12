@@ -19,6 +19,8 @@ import           Data.Set            (Set)
 import qualified Data.Set            as Set
 import qualified Data.Text           as T
 
+import           Debug.Trace         (traceShowId)
+
 
 -- data TType = TName Literal | TArrow TType TType
 type TType = U.Term
@@ -97,10 +99,21 @@ unifyLambda = undefined -- U.unify . createSystem
 
 infer :: Lambda -> Maybe (TType, Context)
 infer lambda = U.unify system >>= \solution -> let context = toContext solution
-                                               -- in return (((Map.fromList context) Map.! lambdaType), context)
-                                               in return (lambdaType, context)
+                                               in return (unroll lambdaType (Map.fromList context), filterFree context)
   where
-    -- ((U.Variable lambdaType), (mapping, _, _, system)) = createSystem lambda
     (lambdaType, (mapping, _, _, system)) = createSystem lambda
-    toContext []                                  = []
-    toContext ((U.Variable var U.:=: lhs) : rest) = (var, lhs) : toContext rest
+    toContext eqs = (map (\x -> (x, U.Variable x)) $ Set.toList $ restFree eqs') ++ eqs'
+      where
+        eqs' = toContext' eqs
+    toContext' []                                  = []
+    toContext' ((U.Variable var U.:=: lhs) : rest) = (var, lhs) : toContext' rest
+    restFree = foldr (Set.delete . fst) fv
+    fv = freeVariables lambda
+    filterFree = filter (\(var, _) -> Set.member var fv)
+    unroll var@(U.Variable name) context = if Set.member name fv
+                                           then var
+                                           else if Map.member name context
+                                                then unroll (context Map.! name) context
+                                                else var
+    unroll fun@(U.Function "arrow" [lhs, rhs]) context =
+      U.Function "arrow" [(unroll lhs context), (unroll rhs context)]
